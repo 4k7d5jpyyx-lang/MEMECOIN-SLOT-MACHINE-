@@ -125,17 +125,17 @@
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = "sawtooth";
-    o.frequency.setValueAtTime(120, t0);
-    o.frequency.exponentialRampToValueAtTime(40, t0 + 0.18);
+    o.frequency.setValueAtTime(160, t0);
+    o.frequency.exponentialRampToValueAtTime(45, t0 + 0.22);
 
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.06, t0 + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+    g.gain.exponentialRampToValueAtTime(0.075, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
 
     o.connect(g);
     g.connect(audioCtx.destination);
     o.start(t0);
-    o.stop(t0 + 0.19);
+    o.stop(t0 + 0.24);
   }
 
   window.addEventListener("pointerdown", () => ensureAudio(), { once: true, passive: true });
@@ -193,6 +193,7 @@
 
     // sound + toast
     if (kind === "BOSS") { chord(140); setToast("⚠ Boss worm emerged", 1500); }
+    if (kind === "DASH") { whoosh(); chord(180); setToast("⚡ Boss dash", 1200); }
     if (kind === "EVENT" && msg.includes("New colony")) { chord(220); setToast("✨ New colony spawned", 1400); }
     if (kind === "MUTATION") { blip(520, 0.07, "sine", 0.045); }
     if (kind === "HATCH") { blip(360, 0.06, "triangle", 0.040); }
@@ -536,6 +537,90 @@
   function shockwave(col, strength = 1) {
     col.shock.push({ r: 0, v: 2.6 + strength * 1.2, a: 0.85, w: 2 + strength });
   }
+  function gigaShock(col) {
+    // layered big shock for "giant" feel
+    shockwave(col, 3.0);
+    setTimeout(() => shockwave(col, 2.4), 40);
+    setTimeout(() => shockwave(col, 1.8), 90);
+  }
+
+  // ---------- Boss dash state ----------
+  let bossRef = null;
+  const bossDash = {
+    tNext: rand(8, 14),   // seconds until next dash
+    tLeft: 0,             // active dash time left
+    vx: 0,
+    vy: 0,
+    angle: 0,
+  };
+
+  function startBossDash(col, boss, time) {
+    // pick a dramatic dash direction (not always right)
+    const head = boss.segs[0];
+    const dx = head.x - col.x;
+    const dy = head.y - col.y;
+    const baseAng = Math.atan2(dy, dx);
+
+    // random arc around colony + sometimes invert orbit direction
+    const ang = baseAng + rand(-1.9, 1.9);
+    bossDash.angle = ang;
+
+    // strong impulse; scaled by dt later
+    const impulse = rand(680, 980); // world units / sec-ish
+    bossDash.vx = Math.cos(ang) * impulse;
+    bossDash.vy = Math.sin(ang) * impulse;
+
+    bossDash.tLeft = rand(0.55, 0.85);
+    bossDash.tNext = rand(8, 14);
+
+    // flip orbit direction occasionally so patterns stay varied
+    if (Math.random() < 0.35) boss.orbitDir *= -1;
+
+    gigaShock(col);
+    addEvent("DASH", "Boss worm CHARGE DASH");
+    whoosh();
+    chord(170);
+  }
+
+  function applyBossDash(dt) {
+    if (!bossRef || bossDash.tLeft <= 0) return;
+
+    const col = colonies[0]; // boss belongs to first colony in this build
+    const boss = bossRef;
+    if (!col || !boss || !boss.segs?.length) { bossDash.tLeft = 0; return; }
+
+    const head = boss.segs[0];
+
+    // Apply impulse (dt-correct) + decay for a punchy dash that eases out
+    const k = Math.pow(0.10, dt); // aggressive decay
+    head.x += bossDash.vx * dt;
+    head.y += bossDash.vy * dt;
+
+    bossDash.vx *= k;
+    bossDash.vy *= k;
+
+    // add extra steering so it still "feels alive"
+    head.a = lerpAngle(head.a, bossDash.angle, 0.25);
+
+    // keep it bounded near the colony, but allow big outward arc
+    const d = Math.hypot(head.x - col.x, head.y - col.y);
+    const leash = 520 + 120 * col.dna.aura;
+    if (d > leash) {
+      // pull back slightly (so it doesn't fly off into space)
+      head.x = lerp(head.x, col.x, 0.06);
+      head.y = lerp(head.y, col.y, 0.06);
+      bossDash.vx *= 0.65;
+      bossDash.vy *= 0.65;
+    }
+
+    bossDash.tLeft -= dt;
+    if (bossDash.tLeft <= 0) {
+      bossDash.tLeft = 0;
+      // end burst with a lighter shock
+      shockwave(col, 1.2);
+      blip(240, 0.08, "triangle", 0.04);
+    }
+  }
 
   // ---------- Boss / splitting / mutation ----------
   function ensureBoss() {
@@ -549,15 +634,15 @@
       boss.hue = 120;
       for (let i = 0; i < 4; i++) addLimb(boss, c, true);
       c.worms.push(boss);
+
+      bossRef = boss;
       bossSpawned = true;
+
       shockwave(c, 1.4);
       addEvent("BOSS", "Boss worm emerged");
       whoosh();
     }
   }
-
-  const MC_STEP = 25000;
-  let nextSplitAt = MC_STEP;
 
   function trySplitByMcap() {
     while (mcap >= nextSplitAt && colonies.length < MAX_COLONIES) {
@@ -645,9 +730,6 @@
   }
 
   // ---------- Controls ----------
-  let labelsOn = true;
-  let miniMapOn = false;
-
   function bind(action, fn) {
     const btn = document.querySelector(`button[data-action="${action}"]`);
     if (btn) btn.addEventListener("click", fn);
@@ -734,34 +816,31 @@
     ctx.fill();
   }
 
-  // ===== BOSS VISUAL HELPER (CROWN AURA) =====
+  // ===== Boss aura helper =====
   function bossAura(x, y, baseR, hue, time) {
     const pulse = 0.85 + 0.15 * Math.sin(time * 0.004);
     const r1 = baseR * 1.45 * pulse;
-    const r2 = baseR * 2.05 * (0.92 + 0.08 * Math.sin(time * 0.002 + 2.0));
+    const r2 = baseR * 2.10 * (0.92 + 0.08 * Math.sin(time * 0.002 + 2.0));
 
-    // outer halo
     let g = ctx.createRadialGradient(x, y, 0, x, y, r2);
-    g.addColorStop(0, `hsla(${hue}, 98%, 70%, 0.16)`);
-    g.addColorStop(0.35, `hsla(${(hue+40)%360}, 98%, 65%, 0.10)`);
+    g.addColorStop(0, `hsla(${hue}, 98%, 70%, 0.18)`);
+    g.addColorStop(0.35, `hsla(${(hue+40)%360}, 98%, 65%, 0.12)`);
     g.addColorStop(1, `hsla(${hue}, 98%, 60%, 0)`);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(x, y, r2, 0, Math.PI * 2);
     ctx.fill();
 
-    // inner crown ring
     g = ctx.createRadialGradient(x, y, 0, x, y, r1);
-    g.addColorStop(0, `hsla(${hue}, 98%, 70%, 0.22)`);
-    g.addColorStop(0.55, `hsla(${hue}, 98%, 65%, 0.08)`);
+    g.addColorStop(0, `hsla(${hue}, 98%, 70%, 0.24)`);
+    g.addColorStop(0.55, `hsla(${hue}, 98%, 65%, 0.10)`);
     g.addColorStop(1, `hsla(${hue}, 98%, 60%, 0)`);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(x, y, r1, 0, Math.PI * 2);
     ctx.fill();
 
-    // crisp ring outline
-    ctx.strokeStyle = `hsla(${hue}, 98%, 72%, 0.45)`;
+    ctx.strokeStyle = `hsla(${hue}, 98%, 72%, 0.50)`;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(x, y, baseR * 1.25 * pulse, 0, Math.PI * 2);
@@ -786,7 +865,6 @@
       aura(col.x, col.y, 145 * col.dna.aura, baseHue, 0.08);
     }
 
-    // outline ring
     const R = 135;
     ctx.strokeStyle = `hsla(${baseHue}, 90%, 65%, .28)`;
     ctx.lineWidth = 1.6;
@@ -804,11 +882,9 @@
     ctx.stroke();
   }
 
-  // ===== UPGRADED BOSS VISUAL DRAW =====
   function drawWorm(w, time) {
     const pts = w.segs;
     if (!pts || pts.length < 2) return;
-
     const head = pts[0];
 
     // Boss mega aura
@@ -822,7 +898,7 @@
     // glow
     if (!isInteracting) {
       ctx.globalCompositeOperation = "lighter";
-      ctx.strokeStyle = `hsla(${w.hue}, 92%, 62%, ${w.isBoss ? 0.34 : 0.14})`;
+      ctx.strokeStyle = `hsla(${w.hue}, 92%, 62%, ${w.isBoss ? 0.36 : 0.14})`;
       ctx.lineWidth = w.width + (w.isBoss ? 14 : 6);
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -856,7 +932,7 @@
       }
     }
 
-    // limbs (boss = thicker + brighter)
+    // limbs
     if (w.limbs?.length) {
       ctx.globalCompositeOperation = isInteracting ? "source-over" : "lighter";
       for (const L of w.limbs) {
@@ -871,7 +947,7 @@
         const lx = base.x + Math.cos(baseAng) * L.len * (w.isBoss ? 1.15 : 1);
         const ly = base.y + Math.sin(baseAng) * L.len * (w.isBoss ? 1.15 : 1);
 
-        ctx.strokeStyle = `hsla(${(w.hue + 40) % 360}, 95%, 66%, ${isInteracting ? 0.30 : (w.isBoss ? 0.75 : 0.55)})`;
+        ctx.strokeStyle = `hsla(${(w.hue + 40) % 360}, 95%, 66%, ${isInteracting ? 0.30 : (w.isBoss ? 0.78 : 0.55)})`;
         ctx.lineWidth = Math.max(2, w.width * (w.isBoss ? 0.55 : 0.35));
         ctx.beginPath();
         ctx.moveTo(base.x, base.y);
@@ -889,20 +965,16 @@
     // boss head eye + sparkles
     if (!isInteracting && w.isBoss) {
       ctx.globalCompositeOperation = "lighter";
-
-      // eye
       ctx.fillStyle = `hsla(${(w.hue + 160) % 360}, 100%, 70%, 0.95)`;
       ctx.beginPath();
       ctx.arc(head.x + Math.cos(head.a) * 6, head.y + Math.sin(head.a) * 6, w.width * 0.55, 0, Math.PI * 2);
       ctx.fill();
 
-      // eye glow
       ctx.fillStyle = `hsla(${(w.hue + 160) % 360}, 100%, 70%, 0.22)`;
       ctx.beginPath();
       ctx.arc(head.x, head.y, w.width * 2.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // sparkles on trail
       const tail = pts[Math.min(pts.length - 1, 10)];
       for (let k = 0; k < 4; k++) {
         const ang = rand(0, Math.PI * 2);
@@ -961,7 +1033,7 @@
   }
 
   // ---------- Worm behavior (fixes “rush right”) ----------
-  function wormBehavior(col, w, time) {
+  function wormBehavior(col, w, time, dt) {
     const head = w.segs[0];
 
     const jitter = Math.sin(time * 0.002 + w.phase) * 0.10;
@@ -1002,6 +1074,12 @@
     const boost = w.isBoss ? 1.8 : 1.0;
     head.x += Math.cos(head.a) * w.speed * 2.05 * boost;
     head.y += Math.sin(head.a) * w.speed * 2.05 * boost;
+
+    // apply boss dash impulse AFTER base movement
+    // (so it stacks on top and looks explosive)
+    if (w.isBoss && bossDash.tLeft > 0) {
+      applyBossDash(dt);
+    }
 
     const maxR = 330 + 60 * col.dna.aura;
     if (d > maxR) {
@@ -1083,6 +1161,14 @@
     ensureBoss();
     trySplitByMcap();
 
+    // boss dash scheduler (every 8–14s)
+    if (bossRef && bossDash.tLeft <= 0) {
+      bossDash.tNext -= dt;
+      if (bossDash.tNext <= 0) {
+        startBossDash(colonies[0], bossRef, time);
+      }
+    }
+
     for (const c of colonies) {
       c.vx += rand(-0.018, 0.018) * c.dna.drift;
       c.vy += rand(-0.018, 0.018) * c.dna.drift;
@@ -1099,7 +1185,7 @@
     }
 
     for (const c of colonies) {
-      for (const w of c.worms) wormBehavior(c, w, time);
+      for (const w of c.worms) wormBehavior(c, w, time, dt);
     }
 
     if (focusOn) centerOnSelected(true);
