@@ -24,33 +24,20 @@
 
       <div class="statusPill">
         <span class="dot"></span>
-        <span id="simStatus">Simulation Active</span>
+        <span id="simStatus">Loading…</span>
       </div>
     </header>
 
     <main class="stack">
-      <!-- SIM -->
+      <!-- SIM (TOP) -->
       <section class="card simCard">
-        <div class="simWrap" id="simWrap">
+        <div class="simWrap">
           <canvas id="simCanvas"></canvas>
 
-          <!-- Watermark overlay (does NOT taint canvas) -->
-          <div class="watermark" aria-hidden="true">
-            <img
-              src="https://i.postimg.cc/hGj8JD0V/1614F03F-52AD-453C-8DB1-09A3B29F3469.png"
-              alt=""
-              draggable="false"
-            />
-            <div class="wmText">
-              <div class="wmTitle">Worm Colony</div>
-              <div class="wmSub">$WORM</div>
-            </div>
-          </div>
+          <!-- mini map optional (hidden by default, toggled by button) -->
+          <canvas id="miniMap" class="miniMap"></canvas>
 
-          <!-- Mini-map overlay -->
-          <canvas id="miniMap" class="miniMap" aria-hidden="true"></canvas>
-
-          <!-- Toast -->
+          <!-- toast -->
           <div class="toast" id="toast">Loading…</div>
         </div>
 
@@ -59,7 +46,7 @@
         </div>
       </section>
 
-      <!-- STATS + EVENTS -->
+      <!-- STATS -->
       <section class="card statsCard">
         <div class="statsGrid">
           <div class="stat">
@@ -70,7 +57,7 @@
             <div class="label">Volume</div>
             <div class="value" id="volume">$0</div>
           </div>
-          <div class="stat">
+          <div class="stat glow">
             <div class="label">M Cap</div>
             <div class="value" id="mcap">$0</div>
           </div>
@@ -83,22 +70,23 @@
             <div class="value" id="worms">0</div>
           </div>
         </div>
+      </section>
 
-        <div class="eventsWrap">
-          <div class="eventsTop">
-            <div class="eventsTitle">Sim Events</div>
-
-            <div class="filters" role="tablist" aria-label="Event filter">
-              <button class="chip active" data-filter="ALL" type="button">All</button>
-              <button class="chip" data-filter="EVENT" type="button">Colony</button>
-              <button class="chip" data-filter="HATCH" type="button">Hatch</button>
-              <button class="chip" data-filter="MUTATION" type="button">Mutation</button>
-              <button class="chip" data-filter="BOSS" type="button">Boss</button>
-            </div>
+      <!-- EVENT LOG (BELOW STATS) -->
+      <section class="card eventCard">
+        <div class="eventTop">
+          <div class="eventTitle">Colony Events</div>
+          <div class="chips">
+            <button class="chip active" data-filter="ALL">All</button>
+            <button class="chip" data-filter="EVENT">Events</button>
+            <button class="chip" data-filter="MUTATION">Mutations</button>
+            <button class="chip" data-filter="BOSS">Boss</button>
+            <button class="chip" data-filter="DASH">Dash</button>
+            <button class="chip" data-filter="HATCH">Hatch</button>
           </div>
-
-          <div class="eventList" id="eventList" aria-live="polite"></div>
         </div>
+
+        <div class="eventList" id="eventList"></div>
       </section>
 
       <!-- CONTROLS -->
@@ -117,12 +105,12 @@
           <button class="neonBtn alt" data-action="zoomIn">Zoom +</button>
 
           <button class="neonBtn alt" data-action="zoomOut">Zoom −</button>
-          <button class="neonBtn" data-action="capture">Capture</button>
-
           <button class="neonBtn alt" data-action="labels" id="labelsBtn">Labels: On</button>
-          <button class="neonBtn alt" data-action="minimap" id="minimapBtn">MiniMap: Off</button>
 
+          <button class="neonBtn alt" data-action="minimap" id="minimapBtn">MiniMap: Off</button>
           <button class="neonBtn alt" data-action="sound" id="soundBtn">Sound: On</button>
+
+          <button class="neonBtn" data-action="capture">Capture</button>
           <button class="neonBtn danger wide" data-action="reset">Reset</button>
         </div>
       </section>
@@ -130,8 +118,6 @@
 
     <footer class="foot">
       <span>© Worm Colony</span>
-      <span class="dotSep">•</span>
-      <span class="hash" id="universeHash">Universe: —</span>
     </footer>
   </div>
 
