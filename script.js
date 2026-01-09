@@ -42,7 +42,7 @@
 
   const mctx = miniMap ? miniMap.getContext("2d", { alpha: true }) : null;
 
-  // ---------- iOS-safe canvas sizing ----------
+  // ---------- Canvas sizing ----------
   let W = 1, H = 1, DPR = 1;
 
   function resizeCanvas() {
@@ -69,7 +69,7 @@
   window.addEventListener("resize", resizeCanvas, { passive: true });
   window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 140), { passive: true });
 
-  // ---------- Audio (unlocks on first gesture on iOS) ----------
+  // ---------- Audio (iOS unlock on gesture) ----------
   let audioOn = true;
   let audioReady = false;
   let audioCtx = null;
@@ -147,12 +147,10 @@
     toast.textContent = msg;
     toast.style.opacity = "0.95";
     clearTimeout(toastTO);
-    toastTO = setTimeout(() => {
-      toast.style.opacity = "0.88";
-    }, ms);
+    toastTO = setTimeout(() => { toast.style.opacity = "0.88"; }, ms);
   }
 
-  // ---------- Events (capped + scroll; sim-only) ----------
+  // ---------- Events (capped + filter) ----------
   const LOG_CAP = 80;
   let filterMode = "ALL";
   const events = []; // {kind,msg,t,count}
@@ -191,7 +189,7 @@
       if (events.length > LOG_CAP) events.length = LOG_CAP;
     }
 
-    // sound + toast
+    // sim-only sounds/toasts (no buy/sell spam in the log)
     if (kind === "BOSS") { chord(140); setToast("⚠ Boss worm emerged", 1500); }
     if (kind === "DASH") { whoosh(); chord(180); setToast("⚡ Boss dash", 1200); }
     if (kind === "EVENT" && msg.includes("New colony")) { chord(220); setToast("✨ New colony spawned", 1400); }
@@ -211,7 +209,7 @@
     });
   });
 
-  // ---------- Economy / progression ----------
+  // ---------- Economy / triggers ----------
   let buyers = 0;
   let volume = 0;
   let mcap = 0;
@@ -219,13 +217,15 @@
   const MAX_COLONIES = 16;
   const MC_STEP = 25000;
   let nextSplitAt = MC_STEP;
+
   let bossSpawned = false;
+  let bossRef = null;
 
   function growthScore() {
     return (mcap / 20000) + (volume / 6000) + (buyers / 10);
   }
 
-  // ---------- Camera / interaction ----------
+  // ---------- Camera ----------
   let camX = 0, camY = 0, zoom = 0.85;
   let dragging = false, lastX = 0, lastY = 0;
   let selected = 0;
@@ -264,7 +264,7 @@
     camY = lerp(camY, -c.y, 0.18);
   }
 
-  // tap feedback rings
+  // tap rings
   const tapRings = [];
   function ring(x, y) {
     tapRings.push({ x, y, r: 10, a: 0.9 });
@@ -298,8 +298,8 @@
     if (idx !== -1) {
       selected = idx;
       const c = colonies[idx];
+      setToast(`Colony #${idx + 1} • ${c.dna.temperament} • ${c.dna.style}`, 1200);
       addEvent("EVENT", `Selected Colony #${idx + 1} • ${c.dna.temperament} • ${c.dna.biome}`);
-      setToast(`Colony #${idx + 1} • ${c.dna.temperament} • ${c.dna.style}`, 1100);
       if (focusOn) centerOnSelected(true);
     }
   }, { passive: true });
@@ -325,16 +325,16 @@
     lastTap = t;
   }, { passive: true });
 
-  // ---------- Background: stars + galaxies + nebulas (no DOM grid) ----------
+  // ---------- Background: stars + nebulas + galaxies ----------
   const bg = {
     stars: [],
     nebulas: [],
     layers: [
-      { par: 0.10, count: 190, size: [0.6, 1.6], a: [0.12, 0.35] },
-      { par: 0.22, count: 140, size: [0.8, 2.2], a: [0.14, 0.45] },
-      { par: 0.40, count: 95,  size: [1.2, 2.8], a: [0.16, 0.55] },
+      { par: 0.10, count: 200, size: [0.6, 1.6], a: [0.12, 0.35] },
+      { par: 0.22, count: 150, size: [0.8, 2.2], a: [0.14, 0.45] },
+      { par: 0.40, count: 100, size: [1.2, 2.8], a: [0.16, 0.55] },
     ],
-    worldSize: 5200,
+    worldSize: 5600,
     phase: 0,
   };
 
@@ -343,15 +343,15 @@
     bg.nebulas.length = 0;
 
     // nebulas
-    const nebCount = 12;
+    const nebCount = 14;
     for (let i = 0; i < nebCount; i++) {
       bg.nebulas.push({
         x: rand(-bg.worldSize, bg.worldSize),
         y: rand(-bg.worldSize, bg.worldSize),
-        r: rand(260, 720),
-        hue: rand(170, 320),
-        a: rand(0.08, 0.22),
-        wob: rand(0.6, 1.6),
+        r: rand(260, 820),
+        hue: rand(170, 330),
+        a: rand(0.08, 0.24),
+        wob: rand(0.6, 1.8),
       });
     }
 
@@ -374,8 +374,9 @@
   }
 
   function drawBackground(time) {
+    // draw in screen space (before world transform) so it never “glitches”
     ctx.fillStyle = "#000";
-    ctx.fillRect(-W/2 - 2, -H/2 - 2, W + 4, H + 4);
+    ctx.fillRect(-W / 2 - 2, -H / 2 - 2, W + 4, H + 4);
 
     bg.phase += 0.00025;
     const exposure = 0.92 + 0.08 * Math.sin(bg.phase);
@@ -392,7 +393,7 @@
       const a0 = (isInteracting ? n.a * 0.65 : n.a) * exposure;
 
       g.addColorStop(0, `hsla(${n.hue}, 85%, 58%, ${a0})`);
-      g.addColorStop(0.45, `hsla(${(n.hue+30)%360}, 85%, 55%, ${a0 * 0.65})`);
+      g.addColorStop(0.45, `hsla(${(n.hue + 30) % 360}, 85%, 55%, ${a0 * 0.65})`);
       g.addColorStop(1, `hsla(${n.hue}, 85%, 55%, 0)`);
 
       ctx.fillStyle = g;
@@ -412,7 +413,9 @@
 
       const cool = s.tint < 0.33;
       const warm = s.tint > 0.72;
-      const col = cool ? `rgba(180,220,255,${a})` : warm ? `rgba(255,220,190,${a})` : `rgba(255,255,255,${a})`;
+      const col = cool ? `rgba(180,220,255,${a})`
+        : warm ? `rgba(255,220,190,${a})`
+        : `rgba(255,255,255,${a})`;
 
       ctx.fillStyle = col;
       ctx.beginPath();
@@ -512,7 +515,7 @@
   // ---------- Fit view ----------
   function zoomOutToFitAll() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const pad = 560;
+    const pad = 620;
 
     for (const c of colonies) {
       minX = Math.min(minX, c.x - pad);
@@ -533,47 +536,41 @@
     camY = -cy;
   }
 
-  // ---------- Shockwave ----------
+  // ---------- Shockwaves ----------
   function shockwave(col, strength = 1) {
     col.shock.push({ r: 0, v: 2.6 + strength * 1.2, a: 0.85, w: 2 + strength });
   }
   function gigaShock(col) {
-    // layered big shock for "giant" feel
     shockwave(col, 3.0);
     setTimeout(() => shockwave(col, 2.4), 40);
     setTimeout(() => shockwave(col, 1.8), 90);
   }
 
   // ---------- Boss dash state ----------
-  let bossRef = null;
   const bossDash = {
-    tNext: rand(8, 14),   // seconds until next dash
-    tLeft: 0,             // active dash time left
+    tNext: rand(8, 14),
+    tLeft: 0,
     vx: 0,
     vy: 0,
     angle: 0,
   };
 
-  function startBossDash(col, boss, time) {
-    // pick a dramatic dash direction (not always right)
+  function startBossDash(col, boss) {
     const head = boss.segs[0];
     const dx = head.x - col.x;
     const dy = head.y - col.y;
     const baseAng = Math.atan2(dy, dx);
 
-    // random arc around colony + sometimes invert orbit direction
     const ang = baseAng + rand(-1.9, 1.9);
     bossDash.angle = ang;
 
-    // strong impulse; scaled by dt later
-    const impulse = rand(680, 980); // world units / sec-ish
+    const impulse = rand(680, 980);
     bossDash.vx = Math.cos(ang) * impulse;
     bossDash.vy = Math.sin(ang) * impulse;
 
     bossDash.tLeft = rand(0.55, 0.85);
     bossDash.tNext = rand(8, 14);
 
-    // flip orbit direction occasionally so patterns stay varied
     if (Math.random() < 0.35) boss.orbitDir *= -1;
 
     gigaShock(col);
@@ -585,28 +582,24 @@
   function applyBossDash(dt) {
     if (!bossRef || bossDash.tLeft <= 0) return;
 
-    const col = colonies[0]; // boss belongs to first colony in this build
+    const col = colonies[0];
     const boss = bossRef;
     if (!col || !boss || !boss.segs?.length) { bossDash.tLeft = 0; return; }
 
     const head = boss.segs[0];
 
-    // Apply impulse (dt-correct) + decay for a punchy dash that eases out
-    const k = Math.pow(0.10, dt); // aggressive decay
+    const k = Math.pow(0.10, dt);
     head.x += bossDash.vx * dt;
     head.y += bossDash.vy * dt;
 
     bossDash.vx *= k;
     bossDash.vy *= k;
 
-    // add extra steering so it still "feels alive"
     head.a = lerpAngle(head.a, bossDash.angle, 0.25);
 
-    // keep it bounded near the colony, but allow big outward arc
     const d = Math.hypot(head.x - col.x, head.y - col.y);
     const leash = 520 + 120 * col.dna.aura;
     if (d > leash) {
-      // pull back slightly (so it doesn't fly off into space)
       head.x = lerp(head.x, col.x, 0.06);
       head.y = lerp(head.y, col.y, 0.06);
       bossDash.vx *= 0.65;
@@ -616,13 +609,12 @@
     bossDash.tLeft -= dt;
     if (bossDash.tLeft <= 0) {
       bossDash.tLeft = 0;
-      // end burst with a lighter shock
       shockwave(col, 1.2);
       blip(240, 0.08, "triangle", 0.04);
     }
   }
 
-  // ---------- Boss / splitting / mutation ----------
+  // ---------- Boss / split / mutate ----------
   function ensureBoss() {
     if (bossSpawned) return;
     if (mcap >= 50000) {
@@ -735,11 +727,11 @@
     if (btn) btn.addEventListener("click", fn);
   }
 
-  bind("feed", () => { volume += rand(20, 90); mcap += rand(120, 460); blip(320, 0.06, "triangle", 0.03); });
-  bind("smallBuy", () => { buyers += 1; volume += rand(180, 900); mcap += rand(900, 3200); blip(420, 0.06, "sine", 0.03); });
-  bind("whaleBuy", () => { buyers += randi(2, 5); volume += rand(2500, 8500); mcap += rand(9000, 22000); shockwave(colonies[0], 1.2); chord(160); });
-  bind("sell", () => { volume = Math.max(0, volume - rand(600, 2600)); mcap = Math.max(0, mcap - rand(2200, 9000)); blip(180, 0.07, "sawtooth", 0.03); });
-  bind("storm", () => { volume += rand(5000, 18000); mcap += rand(2000, 8000); shockwave(colonies[0], 1.0); whoosh(); });
+  bind("feed", () => { volume += rand(20, 90); mcap += rand(120, 460); });
+  bind("smallBuy", () => { buyers += 1; volume += rand(180, 900); mcap += rand(900, 3200); });
+  bind("whaleBuy", () => { buyers += randi(2, 5); volume += rand(2500, 8500); mcap += rand(9000, 22000); shockwave(colonies[0], 1.2); });
+  bind("sell", () => { volume = Math.max(0, volume - rand(600, 2600)); mcap = Math.max(0, mcap - rand(2200, 9000)); });
+  bind("storm", () => { volume += rand(5000, 18000); mcap += rand(2000, 8000); shockwave(colonies[0], 1.0); });
   bind("mutate", () => mutateRandom());
 
   bind("focus", () => {
@@ -750,24 +742,8 @@
     blip(260, 0.05, "sine", 0.03);
   });
 
-  bind("zoomIn", () => { zoom = clamp(zoom * 1.12, 0.55, 2.6); blip(540, 0.04, "sine", 0.02); });
-  bind("zoomOut", () => { zoom = clamp(zoom * 0.88, 0.55, 2.6); blip(220, 0.04, "sine", 0.02); });
-
-  bind("capture", () => {
-    try {
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "worm_colony.png";
-      a.click();
-      setToast("Capture saved");
-      blip(720, 0.06, "triangle", 0.03);
-    } catch {
-      setToast("Capture blocked — screenshot instead");
-    }
-  });
-
-  bind("reset", () => location.reload());
+  bind("zoomIn", () => { zoom = clamp(zoom * 1.12, 0.55, 2.6); });
+  bind("zoomOut", () => { zoom = clamp(zoom * 0.88, 0.55, 2.6); });
 
   bind("labels", () => {
     labelsOn = !labelsOn;
@@ -792,7 +768,22 @@
     blip(340, 0.05, "triangle", 0.03);
   });
 
-  // ---------- Stats update ----------
+  bind("capture", () => {
+    try {
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "worm_colony.png";
+      a.click();
+      setToast("Capture saved");
+    } catch {
+      setToast("Capture blocked — screenshot instead");
+    }
+  });
+
+  bind("reset", () => location.reload());
+
+  // ---------- Stats ----------
   function updateStats() {
     if (elBuyers) elBuyers.textContent = String(buyers);
     if (elVolume) elVolume.textContent = fmt(volume);
@@ -804,11 +795,11 @@
     }
   }
 
-  // ---------- Rendering helpers ----------
+  // ---------- Rendering ----------
   function aura(x, y, r, hue, a) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, `hsla(${hue},95%,65%,${a})`);
-    g.addColorStop(0.55, `hsla(${(hue+30)%360},95%,62%,${a*0.55})`);
+    g.addColorStop(0.55, `hsla(${(hue + 30) % 360},95%,62%,${a * 0.55})`);
     g.addColorStop(1, `hsla(${hue},95%,65%,0)`);
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -816,7 +807,6 @@
     ctx.fill();
   }
 
-  // ===== Boss aura helper =====
   function bossAura(x, y, baseR, hue, time) {
     const pulse = 0.85 + 0.15 * Math.sin(time * 0.004);
     const r1 = baseR * 1.45 * pulse;
@@ -824,7 +814,7 @@
 
     let g = ctx.createRadialGradient(x, y, 0, x, y, r2);
     g.addColorStop(0, `hsla(${hue}, 98%, 70%, 0.18)`);
-    g.addColorStop(0.35, `hsla(${(hue+40)%360}, 98%, 65%, 0.12)`);
+    g.addColorStop(0.35, `hsla(${(hue + 40) % 360}, 98%, 65%, 0.12)`);
     g.addColorStop(1, `hsla(${hue}, 98%, 60%, 0)`);
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -887,7 +877,6 @@
     if (!pts || pts.length < 2) return;
     const head = pts[0];
 
-    // Boss mega aura
     if (w.isBoss && !isInteracting) {
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -895,7 +884,6 @@
       ctx.restore();
     }
 
-    // glow
     if (!isInteracting) {
       ctx.globalCompositeOperation = "lighter";
       ctx.strokeStyle = `hsla(${w.hue}, 92%, 62%, ${w.isBoss ? 0.36 : 0.14})`;
@@ -908,7 +896,6 @@
       ctx.stroke();
     }
 
-    // core
     ctx.globalCompositeOperation = "source-over";
     ctx.strokeStyle = `hsla(${w.hue}, 95%, 65%, ${w.isBoss ? 0.99 : 0.9})`;
     ctx.lineWidth = w.width + (w.isBoss ? 1.2 : 0);
@@ -919,7 +906,6 @@
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.stroke();
 
-    // beads
     if (!isInteracting) {
       const step = w.isBoss ? 2 : 4;
       for (let i = 0; i < pts.length; i += step) {
@@ -932,7 +918,6 @@
       }
     }
 
-    // limbs
     if (w.limbs?.length) {
       ctx.globalCompositeOperation = isInteracting ? "source-over" : "lighter";
       for (const L of w.limbs) {
@@ -954,15 +939,13 @@
         ctx.quadraticCurveTo(
           base.x + Math.cos(baseAng) * (L.len * 0.55),
           base.y + Math.sin(baseAng) * (L.len * 0.55),
-          lx,
-          ly
+          lx, ly
         );
         ctx.stroke();
       }
       ctx.globalCompositeOperation = "source-over";
     }
 
-    // boss head eye + sparkles
     if (!isInteracting && w.isBoss) {
       ctx.globalCompositeOperation = "lighter";
       ctx.fillStyle = `hsla(${(w.hue + 160) % 360}, 100%, 70%, 0.95)`;
@@ -974,19 +957,6 @@
       ctx.beginPath();
       ctx.arc(head.x, head.y, w.width * 2.8, 0, Math.PI * 2);
       ctx.fill();
-
-      const tail = pts[Math.min(pts.length - 1, 10)];
-      for (let k = 0; k < 4; k++) {
-        const ang = rand(0, Math.PI * 2);
-        const rr = rand(0, 14);
-        const sx = tail.x + Math.cos(ang) * rr;
-        const sy = tail.y + Math.sin(ang) * rr;
-        ctx.fillStyle = `hsla(${(w.hue + 90) % 360}, 100%, 70%, ${0.28 + 0.22 * Math.random()})`;
-        ctx.beginPath();
-        ctx.arc(sx, sy, rand(0.6, 1.6), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
       ctx.globalCompositeOperation = "source-over";
     }
   }
@@ -1032,7 +1002,7 @@
     ctx.restore();
   }
 
-  // ---------- Worm behavior (fixes “rush right”) ----------
+  // ---------- Worm behavior (fix “rush right”) ----------
   function wormBehavior(col, w, time, dt) {
     const head = w.segs[0];
 
@@ -1075,11 +1045,7 @@
     head.x += Math.cos(head.a) * w.speed * 2.05 * boost;
     head.y += Math.sin(head.a) * w.speed * 2.05 * boost;
 
-    // apply boss dash impulse AFTER base movement
-    // (so it stacks on top and looks explosive)
-    if (w.isBoss && bossDash.tLeft > 0) {
-      applyBossDash(dt);
-    }
+    if (w.isBoss && bossDash.tLeft > 0) applyBossDash(dt);
 
     const maxR = 330 + 60 * col.dna.aura;
     if (d > maxR) {
@@ -1122,7 +1088,7 @@
     mctx.clearRect(0, 0, mw, mh);
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const pad = 560;
+    const pad = 620;
     for (const c of colonies) {
       minX = Math.min(minX, c.x - pad);
       minY = Math.min(minY, c.y - pad);
@@ -1161,12 +1127,10 @@
     ensureBoss();
     trySplitByMcap();
 
-    // boss dash scheduler (every 8–14s)
+    // boss dash scheduler
     if (bossRef && bossDash.tLeft <= 0) {
       bossDash.tNext -= dt;
-      if (bossDash.tNext <= 0) {
-        startBossDash(colonies[0], bossRef, time);
-      }
+      if (bossDash.tNext <= 0) startBossDash(colonies[0], bossRef);
     }
 
     for (const c of colonies) {
@@ -1209,7 +1173,7 @@
     ctx.save();
     ctx.translate(W / 2, H / 2);
 
-    // background
+    // background screen-space first
     drawBackground(time);
 
     // world
@@ -1246,7 +1210,7 @@
 
     ctx.restore();
 
-    if (miniMapOn && miniMap && mctx) drawMiniMap();
+    if (miniMapOn) drawMiniMap();
 
     if (simStatus) simStatus.textContent = "Simulation Active";
   }
@@ -1260,11 +1224,6 @@
   function tick(now) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-
-    if (!Number.isFinite(dt) || !Number.isFinite(now)) {
-      requestAnimationFrame(tick);
-      return;
-    }
 
     step(dt, now);
 
@@ -1285,7 +1244,7 @@
     updateStats();
 
     addEvent("EVENT", "Simulation ready");
-    setToast("Tap to interact", 1100);
+    setToast("Tap a colony to inspect (toast + events)", 1400);
 
     requestAnimationFrame(tick);
   }
