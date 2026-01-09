@@ -1,992 +1,136 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Meme Slot Machine v3 — 9 Reels + Progressive Jackpot</title>
-  <style>
-    :root{
-      --bg:#070812;
-      --panel:#0e1021;
-      --txt:#eef0ff;
-      --muted:#a7b0ff;
-      --a:#7c4dff;
-      --b:#22d3ee;
-      --c:#34d399;
-      --r:#fb7185;
-      --gold:#ffd166;
-      --border:rgba(255,255,255,.10);
-      --radius:18px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      --glow: 0 0 18px rgba(124,77,255,.25), 0 0 36px rgba(34,211,238,.16);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:var(--sans); color:var(--txt); min-height:100vh;
-      background:
-        radial-gradient(1000px 600px at 15% 10%, rgba(124,77,255,.22), transparent 55%),
-        radial-gradient(900px 600px at 85% 25%, rgba(34,211,238,.18), transparent 60%),
-        radial-gradient(900px 600px at 50% 95%, rgba(52,211,153,.12), transparent 55%),
-        var(--bg);
-    }
-    header{
-      max-width:1200px; margin:0 auto; padding:24px 18px 10px;
-      display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:flex-start;
-    }
-    h1{margin:0; font-size:28px; letter-spacing:.5px}
-    .sub{margin:8px 0 0; color:var(--muted); line-height:1.35; max-width:820px}
-    .chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
-    .chip{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.03);
-      padding:8px 10px;
-      border-radius:999px;
-      font-family:var(--mono);
-      font-size:12px;
-      box-shadow:var(--glow);
-      color:rgba(238,240,255,.92);
-      display:flex; gap:8px; align-items:center;
-    }
-    .chip.gold{
-      border-color: rgba(255,209,102,.35);
-      box-shadow: 0 0 16px rgba(255,209,102,.22), 0 0 28px rgba(255,209,102,.12);
-    }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Worm Colony — $WORM</title>
 
-    main{
-      max-width:1200px; margin:0 auto; padding:10px 18px 34px;
-      display:grid; grid-template-columns: 1.2fr .8fr; gap:18px;
-    }
-    @media (max-width: 980px){ main{grid-template-columns:1fr} }
-
-    .card{
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:16px;
-      box-shadow:0 22px 60px rgba(0,0,0,.35);
-      position:relative;
-      overflow:hidden;
-    }
-    .card h2{
-      margin:0 0 10px;
-      font-size:14px; letter-spacing:.5px;
-      display:flex; justify-content:space-between; align-items:center;
-      color:rgba(238,240,255,.95);
-    }
-
-    .banner{
-      position:absolute; top:14px; right:14px;
-      padding:8px 10px;
-      border-radius:14px;
-      border:1px solid rgba(255,209,102,.35);
-      background:linear-gradient(135deg, rgba(255,209,102,.22), rgba(255,209,102,.08));
-      font-family:var(--mono);
-      font-weight:900;
-      font-size:12px;
-      color:rgba(255,209,102,.95);
-      text-transform:uppercase;
-      letter-spacing:.8px;
-      display:none;
-      box-shadow:0 0 22px rgba(255,209,102,.18);
-    }
-    .banner.show{display:block; animation: pop .55s ease;}
-    @keyframes pop{
-      0%{transform:translateY(-6px) scale(.98); opacity:0}
-      100%{transform:translateY(0) scale(1); opacity:1}
-    }
-
-    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    @media(max-width:560px){ .row{grid-template-columns:1fr} }
-    label{ display:block; font-size:12px; color:rgba(238,240,255,.85); margin:12px 0 6px; }
-    input, select{
-      width:100%;
-      padding:11px 12px;
-      border-radius:14px;
-      background:rgba(5,6,10,.55);
-      color:var(--txt);
-      border:1px solid rgba(255,255,255,.12);
-      outline:none;
-      font-size:14px;
-    }
-
-    /* 9 reels */
-    .machine{
-      display:grid;
-      grid-template-columns: repeat(9, 1fr);
-      gap:8px;
-      margin-top:10px;
-    }
-    @media(max-width:1100px){ .machine{grid-template-columns: repeat(3,1fr);} }
-    @media(max-width:620px){ .machine{grid-template-columns: repeat(2,1fr);} }
-
-    .reel{
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.25);
-      border-radius:18px;
-      height:130px;
-      overflow:hidden;
-      position:relative;
-      box-shadow:var(--glow);
-    }
-    .reelLabel{
-      position:absolute; top:10px; left:12px;
-      font-family:var(--mono);
-      font-size:10.5px;
-      letter-spacing:.5px;
-      color:rgba(167,176,255,.95);
-      z-index:2;
-      text-transform:uppercase;
-      opacity:.95;
-      pointer-events:none;
-    }
-    .reel::after{
-      content:"";
-      position:absolute; inset:0;
-      background:linear-gradient(to bottom, rgba(7,8,18,.78), transparent 25%, transparent 75%, rgba(7,8,18,.78));
-      pointer-events:none;
-      z-index:1;
-    }
-    .scanLine{
-      position:absolute; left:12px; right:12px; top:50%;
-      height:2px; transform:translateY(-50%);
-      background:linear-gradient(90deg, transparent, rgba(34,211,238,.9), transparent);
-      filter:drop-shadow(0 0 10px rgba(34,211,238,.6));
-      opacity:.75;
-      z-index:2;
-      pointer-events:none;
-    }
-    .reelTrack{
-      position:absolute; left:0; right:0; top:0;
-      display:flex; flex-direction:column;
-      transform: translateY(0);
-      transition: transform 1.2s cubic-bezier(.2,.9,.2,1);
-      z-index:0;
-    }
-    .slotItem{
-      height:65px;
-      display:flex; align-items:center; justify-content:center;
-      font-weight:900;
-      letter-spacing:.6px;
-      text-transform:uppercase;
-      font-size:13px;
-      font-family:var(--mono);
-      color:rgba(238,240,255,.95);
-      border-bottom:1px solid rgba(255,255,255,.06);
-      padding:0 8px;
-      text-align:center;
-    }
-
-    .controls{
-      margin-top:14px;
-      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
-    }
-    button{
-      border:none;
-      background:linear-gradient(135deg, var(--a), var(--b));
-      color:#07101a;
-      font-weight:900;
-      padding:11px 14px;
-      border-radius:14px;
-      cursor:pointer;
-      box-shadow:var(--glow);
-      transition: transform .08s ease, filter .15s ease;
-    }
-    button:active{ transform: translateY(1px) scale(.99); }
-    button:hover{ filter:saturate(1.1); }
-    button:disabled{opacity:.65; cursor:not-allowed; filter:none}
-    .ghost{
-      background:transparent;
-      color:var(--txt);
-      border:1px solid var(--border);
-      box-shadow:none;
-    }
-    .danger{
-      background:linear-gradient(135deg, var(--r), #ffcf5a);
-      color:#14060a;
-    }
-
-    .meter{
-      margin-top:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.02);
-      border-radius:14px;
-      padding:12px;
-    }
-    .bar{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:8px;}
-    .bar > div{height:100%;width:0%;background:linear-gradient(90deg, var(--c), var(--b), var(--gold));transition:width .35s ease;}
-
-    .resultGrid{display:grid; gap:10px; margin-top:10px;}
-    .field{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.02);
-      border-radius:14px;
-      padding:10px 10px 9px;
-    }
-    .k{
-      font-family:var(--mono); font-size:11px;
-      color:rgba(167,176,255,.95);
-      letter-spacing:.4px;
-      display:flex; justify-content:space-between; gap:10px;
-      align-items:center;
-    }
-    .v{margin-top:6px;font-size:14px;line-height:1.3;color:rgba(238,240,255,.95);word-break:break-word;}
-    .v.mono{font-family:var(--mono); font-size:12.5px; color:rgba(238,240,255,.88); }
-    .copy{
-      font-family:var(--mono); font-size:11px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.18);
-      color:rgba(238,240,255,.92);
-      padding:6px 8px;
-      border-radius:10px;
-      cursor:pointer;
-      white-space:nowrap;
-    }
-
-    /* Confetti */
-    .confettiWrap{position:fixed; inset:0; pointer-events:none; overflow:hidden; display:none; z-index:9999;}
-    .confettiWrap.show{display:block;}
-    .confetti{
-      position:absolute; top:-20px;
-      width:10px; height:16px;
-      opacity:.9;
-      animation: fall 1.9s linear forwards;
-      border-radius:3px;
-      filter: drop-shadow(0 0 6px rgba(255,255,255,.12));
-    }
-    @keyframes fall{
-      to{ transform: translateY(calc(100vh + 40px)) rotate(720deg); opacity:1; }
-    }
-
-    #renderCanvas{display:none;}
-    .small{color:rgba(167,176,255,.9); font-size:12px; margin-top:10px; line-height:1.35}
-  </style>
+  <link rel="preconnect" href="https://i.postimg.cc" crossorigin>
+  <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <div class="confettiWrap" id="confettiWrap"></div>
-
-  <header>
-    <div>
-      <h1>MEME SLOT MACHINE <span style="opacity:.78">v3</span></h1>
-      <div class="sub">9 reels + progressive jackpot. Spin generates: name, ticker, lore, logo prompt, and 3 tweets — shaped by the reels. Hit matches to win jackpots.</div>
-      <div class="chips">
-        <div class="chip">🎰 9 Reels</div>
-        <div class="chip gold">🪙 Progressive Pot: <span id="potText">—</span></div>
-        <div class="chip">Block Height: <span id="blockHeight">—</span></div>
-      </div>
-    </div>
-  </header>
-
-  <main>
-    <section class="card" id="machineCard">
-      <div class="banner" id="banner">💥 JACKPOT LOCKED</div>
-
-      <h2>Slot Machine</h2>
-
-      <div class="row">
-        <div>
-          <label>Theme</label>
-          <select id="theme">
-            <option value="degen" selected>Degen</option>
-            <option value="cute">Cute</option>
-            <option value="dark">Dark</option>
-            <option value="finance">Finance</option>
-            <option value="animal">Animals</option>
-            <option value="anime">Anime-ish</option>
-            <option value="news">News Satire</option>
-          </select>
-        </div>
-        <div>
-          <label>Chain Flavor</label>
-          <select id="chain">
-            <option value="sol" selected>Solana-ish</option>
-            <option value="eth">ETH-ish</option>
-            <option value="base">Base-ish</option>
-            <option value="none">No chain</option>
-          </select>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <img class="brandLogo" id="brandLogo"
+          src="https://i.postimg.cc/hGj8JD0V/1614F03F-52AD-453C-8DB1-09A3B29F3469.png"
+          alt="Worm Colony Logo" />
+        <div class="brandText">
+          <div class="title">Worm Colony</div>
+          <div class="sub">$WORM • LIVE COLONY</div>
         </div>
       </div>
 
-      <div class="row">
-        <div>
-          <label>Supply (display)</label>
-          <input id="supply" value="1,000,000,000" maxlength="20"/>
-        </div>
-        <div>
-          <label>Spice (affects jackpot odds)</label>
-          <input id="spice" type="range" min="0" max="100" value="72"/>
-        </div>
+      <div class="statusPill">
+        <span class="dot"></span>
+        <span id="simStatus">Simulation Active</span>
       </div>
+    </header>
 
-      <div class="meter">
-        <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
-          <div style="font-weight:900">Jackpot Odds + Pot Meter</div>
-          <div id="oddsText" style="font-family:var(--mono); font-size:12px; color:rgba(167,176,255,.95)">—</div>
+    <main class="stack">
+      <!-- SIM CARD -->
+      <section class="card simCard">
+        <div class="simWrap" id="simWrap">
+          <canvas id="simCanvas"></canvas>
+
+          <!-- Watermark overlay (does NOT taint canvas) -->
+          <div class="watermark" aria-hidden="true">
+            <img
+              src="https://i.postimg.cc/hGj8JD0V/1614F03F-52AD-453C-8DB1-09A3B29F3469.png"
+              alt=""
+              draggable="false"
+            />
+          </div>
+
+          <!-- Mini-map overlay -->
+          <canvas id="miniMap" class="miniMap" aria-hidden="true"></canvas>
+
+          <!-- Toast -->
+          <div class="toast" id="toast">Loading…</div>
         </div>
-        <div class="bar"><div id="potBar"></div></div>
-        <div class="small">Mini: 3-of-a-kind (Mascot/Narrative/Trend). Mega: any 5-of-a-kind. Ultimate: all 9 match.</div>
-      </div>
 
-      <div class="machine" aria-label="Slot reels">
-        <div class="reel"><div class="reelLabel">Prefix</div><div class="scanLine"></div><div class="reelTrack" id="reel1"></div></div>
-        <div class="reel"><div class="reelLabel">Mascot</div><div class="scanLine"></div><div class="reelTrack" id="reel2"></div></div>
-        <div class="reel"><div class="reelLabel">Suffix</div><div class="scanLine"></div><div class="reelTrack" id="reel3"></div></div>
-        <div class="reel"><div class="reelLabel">Narrative</div><div class="scanLine"></div><div class="reelTrack" id="reel4"></div></div>
-        <div class="reel"><div class="reelLabel">Visual</div><div class="scanLine"></div><div class="reelTrack" id="reel5"></div></div>
-        <div class="reel"><div class="reelLabel">Emotion</div><div class="scanLine"></div><div class="reelTrack" id="reel6"></div></div>
-        <div class="reel"><div class="reelLabel">Trend</div><div class="scanLine"></div><div class="reelTrack" id="reel7"></div></div>
-        <div class="reel"><div class="reelLabel">CTA</div><div class="scanLine"></div><div class="reelTrack" id="reel8"></div></div>
-        <div class="reel"><div class="reelLabel">Ticker</div><div class="scanLine"></div><div class="reelTrack" id="reel9"></div></div>
-      </div>
-
-      <div class="controls">
-        <button id="spinBtn">PULL LEVER (SPIN)</button>
-        <button id="copyAllBtn" class="ghost">COPY ALL</button>
-        <button id="downloadBtn" class="ghost">DOWNLOAD CARD</button>
-        <button id="resetPotBtn" class="ghost">RESET POT</button>
-        <button id="clearBtn" class="danger">CLEAR HISTORY</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Launch Pack</h2>
-
-      <div class="resultGrid">
-        <div class="field">
-          <div class="k">COIN NAME <button class="copy" data-copy="name">COPY</button></div>
-          <div class="v" id="outName">—</div>
+        <div class="hint">
+          Tap colonies • Drag pan • Pinch zoom • Double tap center
         </div>
-        <div class="field">
-          <div class="k">TICKER <button class="copy" data-copy="ticker">COPY</button></div>
-          <div class="v mono" id="outTicker">—</div>
+      </section>
+
+      <!-- STATS + EVENTS -->
+      <section class="card statsCard">
+        <div class="statsGrid">
+          <div class="stat">
+            <div class="label">Buyers</div>
+            <div class="value" id="buyers">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">Volume</div>
+            <div class="value" id="volume">$0</div>
+          </div>
+          <div class="stat">
+            <div class="label">M Cap</div>
+            <div class="value" id="mcap">$0</div>
+          </div>
+          <div class="stat">
+            <div class="label">Colonies</div>
+            <div class="value" id="colonies">1</div>
+          </div>
+          <div class="stat">
+            <div class="label">Worms</div>
+            <div class="value" id="worms">0</div>
+          </div>
         </div>
-        <div class="field">
-          <div class="k">JACKPOT RESULT <button class="copy" data-copy="jackpot">COPY</button></div>
-          <div class="v mono" id="outJackpot">—</div>
+
+        <div class="eventsWrap">
+          <div class="eventsTop">
+            <div class="eventsTitle">Sim Events</div>
+
+            <div class="filters" role="tablist" aria-label="Event filter">
+              <button class="chip active" data-filter="ALL" type="button">All</button>
+              <button class="chip" data-filter="EVENT" type="button">Colony</button>
+              <button class="chip" data-filter="HATCH" type="button">Hatch</button>
+              <button class="chip" data-filter="MUTATION" type="button">Mutation</button>
+              <button class="chip" data-filter="BOSS" type="button">Boss</button>
+            </div>
+          </div>
+
+          <div class="eventList" id="eventList" aria-live="polite"></div>
         </div>
-        <div class="field">
-          <div class="k">LORE / HOOK <button class="copy" data-copy="lore">COPY</button></div>
-          <div class="v" id="outLore">—</div>
+      </section>
+
+      <!-- CONTROLS -->
+      <section class="card controlsCard">
+        <div class="btnGrid">
+          <button class="neonBtn" data-action="feed">Feed</button>
+          <button class="neonBtn alt" data-action="smallBuy">Small Buy</button>
+
+          <button class="neonBtn" data-action="whaleBuy">Whale Buy</button>
+          <button class="neonBtn danger" data-action="sell">Sell-off</button>
+
+          <button class="neonBtn alt" data-action="storm">Volume Storm</button>
+          <button class="neonBtn" data-action="mutate">Mutate</button>
+
+          <button class="neonBtn" data-action="focus" id="focusBtn">Focus: Off</button>
+          <button class="neonBtn alt" data-action="zoomIn">Zoom +</button>
+
+          <button class="neonBtn alt" data-action="zoomOut">Zoom −</button>
+          <button class="neonBtn" data-action="capture">Capture</button>
+
+          <button class="neonBtn alt" data-action="labels" id="labelsBtn">Labels: On</button>
+          <button class="neonBtn alt" data-action="minimap" id="minimapBtn">MiniMap: Off</button>
+
+          <button class="neonBtn alt" data-action="sound" id="soundBtn">Sound: On</button>
+          <button class="neonBtn danger wide" data-action="reset">Reset</button>
         </div>
-        <div class="field">
-          <div class="k">LOGO PROMPT <button class="copy" data-copy="logo">COPY</button></div>
-          <div class="v mono" id="outLogo">—</div>
-        </div>
-        <div class="field">
-          <div class="k">TWEET 1 <button class="copy" data-copy="t1">COPY</button></div>
-          <div class="v" id="outT1">—</div>
-        </div>
-        <div class="field">
-          <div class="k">TWEET 2 <button class="copy" data-copy="t2">COPY</button></div>
-          <div class="v" id="outT2">—</div>
-        </div>
-        <div class="field">
-          <div class="k">TWEET 3 <button class="copy" data-copy="t3">COPY</button></div>
-          <div class="v" id="outT3">—</div>
-        </div>
-        <div class="field">
-          <div class="k">LOCKED BLOCK HASH <button class="copy" data-copy="hash">COPY</button></div>
-          <div class="v mono" id="outHash">—</div>
-        </div>
-        <div class="field">
-          <div class="k">REELS (ALL 9) <button class="copy" data-copy="reels">COPY</button></div>
-          <div class="v mono" id="outReels">—</div>
-        </div>
-      </div>
-
-      <div class="small" id="historyNote"></div>
-      <canvas id="renderCanvas" width="1200" height="675"></canvas>
-    </section>
-  </main>
-
-<script>
-  const $ = (id)=>document.getElementById(id);
-  const storeKey="meme_slot_history_v3";
-  const potKey="meme_slot_pot_v3";
-
-  // ----------------- hashing + PRNG -----------------
-  function hash8(str){
-    let h=2166136261;
-    for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return ("00000000"+(h>>>0).toString(16)).slice(-8);
-  }
-  function hash64(str){
-    let out=""; for(let i=0;i<8;i++) out += hash8(str+"|"+i); return out.slice(0,64);
-  }
-  const rand = (seed)=>{
-    let x = seed >>> 0;
-    return ()=>{
-      x ^= x << 13; x >>>= 0;
-      x ^= x >> 17; x >>>= 0;
-      x ^= x << 5;  x >>>= 0;
-      return (x>>>0) / 4294967296;
-    };
-  };
-  function pick(arr, r){ return arr[Math.floor(r()*arr.length)] }
-  function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
-  function titleCase(s){ return s.replace(/\w\S*/g, t=>t[0].toUpperCase()+t.slice(1).toLowerCase()); }
-
-  // ----------------- banks -----------------
-  const emojisByTheme = {
-    degen:["🧨","🪙","🌀","🧪","🎰","🚀","🧯","🛰️","🧱","🦍"],
-    cute:["🧋","🍡","🐾","✨","🩷","🍓","🧸","🌸","🥺","🫧"],
-    dark:["🕯️","🖤","🪦","🌑","🕷️","🗝️","🔮","⚰️","🦇","⛓️"],
-    finance:["📈","🏦","🧾","🧮","💹","🧠","🗂️","💼","🪙","⚖️"],
-    animal:["🦝","🪿","🦈","🦉","🦀","🦊","🐊","🐾","🦘","🦡"],
-    anime:["🌸","⚔️","🦊","🎴","🧋","✨","🗡️","🛡️","🧬","🌙"],
-    news:["📺","🗞️","🎙️","🔥","🧾","🧵","🧨","👀","📉","📈"]
-  };
-
-  // 9 reels
-  const R1=["FOMO","SLIP","MOON","BAG","WEN","HYPE","REKT","VIBE","YAP","TURBO","ALPHA","GIGA","VOID","KAWAII","BREAKING","YIELD","FERAL","RABID"];
-  const R2=["GOBLIN","WHALE","SNIPER","OTTER","FROG","RACCOON","RAVEN","WIZARD","SAMURAI","ONI","DRAGON","BANKER","ORACLE","PIGEON","CAPY","GATOR","HAMSTER","PANDA","PHANTOM","PRINTER"];
-  const R3=["DAO","GANG","ARMY","CLUB","CULT","INDEX","SAGA","CLAN","VERSE","COIN","PROTOCOL","SOCIETY","NETWORK","FOUNDATION","SYNDICATE","ORDER","CIRCUIT","VAULT","TEMPLE"];
-  const R4=["RITUAL","PORTAL","CASINO","WORMHOLE","NARRATIVE","ALPHA","TIMELINE","LIQUIDITY","ATTENTION","MYTH","PROPHECY","HEADLINE","HEIST","MEME-ENGINE","SPEEDRUN","VIRALITY","CHAOS","SERMON"];
-  const R5=["SILHOUETTE","NEON","GLITCH","PIXEL","CHROME","INK","GOLD","PASTEL","NOIR","VHS","HOLOGRAM","STICKER","VECTOR","SPRAYPAINT","BLUEPRINT"];
-  const R6=["RAGE","JOY","COPE","HOPE","GREED","AURA","DELUSION","ZEN","SPITE","EUPHORIA","PANIC","CHILL","MENACE","WHIMSY"];
-  const R7=["WIF","INU","AI","420","69","X","GG","OG","LFG","GM","WAGMI","FUD","COPE","SEND","FOMO"];
-  const R8=["REPLY SPIN","DROP 🔥","TAG 3","SAY GM","POST MEME","LOCK IN","SEND IT","JOIN TG","HOLD LINE","BUY DIP"];
-  const R9=["3L","4L","5L","6L","VOWELS","NO-VOWELS","WIF","INU","AI","420","69","X","GG","SOL","BASE","ETH","ULTRA","MINI","MAX","OG"];
-
-  const reelsMeta = [
-    {id:"reel1", label:"Prefix", arr:R1},
-    {id:"reel2", label:"Mascot", arr:R2},
-    {id:"reel3", label:"Suffix", arr:R3},
-    {id:"reel4", label:"Narrative", arr:R4},
-    {id:"reel5", label:"Visual", arr:R5},
-    {id:"reel6", label:"Emotion", arr:R6},
-    {id:"reel7", label:"Trend", arr:R7},
-    {id:"reel8", label:"CTA", arr:R8},
-    {id:"reel9", label:"Ticker", arr:R9},
-  ];
-
-  function initReels(){
-    const makeTrack=(arr)=>{
-      const items=[...arr, ...arr, ...arr];
-      return items.map(w=>`<div class="slotItem">${w}</div>`).join("");
-    };
-    reelsMeta.forEach(m => $(m.id).innerHTML = makeTrack(m.arr));
-  }
-
-  // ----------------- progressive pot -----------------
-  function getPot(){
-    const n = Number(localStorage.getItem(potKey) || "1000");
-    return isFinite(n) ? n : 1000;
-  }
-  function setPot(n){ localStorage.setItem(potKey, String(Math.max(0, Math.floor(n)))); }
-  function formatPot(n){ return n.toLocaleString(); }
-
-  function jackpotChance(spice){
-    // base chance affects "pot growth" + "ultimate odds", but match-based jackpots still exist
-    return 0.01 + (spice/100)*0.05; // 1% to 6%
-  }
-
-  function updatePotUI(){
-    const pot=getPot();
-    $("potText").textContent = formatPot(pot) + " 🪙";
-    const spice=+$("spice").value;
-    const p=jackpotChance(spice);
-    $("oddsText").textContent = `Bonus odds: ${(p*100).toFixed(1)}% • Pot: ${formatPot(pot)}🪙`;
-    // meter: fill based on pot vs a soft cap
-    const cap = 25000;
-    $("potBar").style.width = clamp((pot/cap)*100, 0, 100) + "%";
-  }
-
-  // ----------------- reel spinning -----------------
-  function spinAllReels(){
-    const landed = {};
-    const landIndex = ()=> 10 + Math.floor(Math.random()*10); // middle copy
-    const px = (i)=> -(i*65);
-
-    reelsMeta.forEach((m, idx)=>{
-      const i = landIndex();
-      const word = m.arr[i-10];
-      landed[m.label.toLowerCase()] = word;
-
-      const el = $(m.id);
-      el.style.transition = `transform ${0.85 + idx*0.08}s cubic-bezier(.15,.9,.2,1)`;
-      setTimeout(()=> el.style.transform = `translateY(${px(i)}px)`, idx*55);
-    });
-
-    return landed;
-  }
-
-  // ----------------- ticker logic -----------------
-  function makeTicker(name, style){
-    const letters = name.replace(/[^A-Za-z]/g,"").toUpperCase() || "COIN";
-    const noVowels = letters.replace(/[AEIOU]/g,"") || letters;
-    const vowelsOnly = letters.replace(/[^AEIOU]/g,"") || letters;
-
-    const base=letters;
-
-    if(style==="3L") return base.slice(0,3).padEnd(3,"X");
-    if(style==="4L") return base.slice(0,4).padEnd(4,"X");
-    if(style==="5L") return base.slice(0,5).padEnd(5,"X");
-    if(style==="6L") return base.slice(0,6).padEnd(6,"X");
-    if(style==="VOWELS") return vowelsOnly.slice(0,4).padEnd(4,"A");
-    if(style==="NO-VOWELS") return noVowels.slice(0,5).padEnd(5,"X");
-    if(style==="WIF") return (base.slice(0,4)+"WIF").slice(0,6);
-    if(style==="INU") return (base.slice(0,4)+"INU").slice(0,6);
-    if(style==="AI") return (base.slice(0,4)+"AI").slice(0,6);
-    if(style==="420") return (base.slice(0,3)+"420").slice(0,6);
-    if(style==="69") return (base.slice(0,4)+"69").slice(0,6);
-    if(style==="X") return (base.slice(0,5)+"X").slice(0,6);
-    if(style==="GG") return (base.slice(0,4)+"GG").slice(0,6);
-    if(style==="SOL") return (base.slice(0,3)+"SOL").slice(0,6);
-    if(style==="BASE") return (base.slice(0,2)+"BASE").slice(0,6);
-    if(style==="ETH") return (base.slice(0,3)+"ETH").slice(0,6);
-    if(style==="ULTRA") return ("UL"+base.slice(0,4)).slice(0,6);
-    if(style==="MINI") return ("MI"+base.slice(0,4)).slice(0,6);
-    if(style==="MAX") return ("MX"+base.slice(0,4)).slice(0,6);
-    if(style==="OG") return ("OG"+base.slice(0,4)).slice(0,6);
-
-    return base.slice(0,5);
-  }
-
-  function chainFlavor(chain){
-    return { sol:"Solana", eth:"Ethereum", base:"Base", none:"the timeline" }[chain] || "the timeline";
-  }
-
-  // ----------------- jackpot evaluation -----------------
-  function evalJackpot(reels){
-    // We count duplicates across ALL 9 reels (case-insensitive)
-    const vals = Object.values(reels).map(v=>String(v).toUpperCase());
-    const counts = new Map();
-    vals.forEach(v=>counts.set(v, (counts.get(v)||0)+1));
-
-    const maxCount = Math.max(...counts.values());
-
-    // match jackpots
-    const ultimate = (maxCount === 9);              // all 9 same
-    const mega = (!ultimate && maxCount >= 5);      // any 5+ same
-    // mini: specifically 3-of-a-kind on Mascot/Narrative/Trend (same value among those 3)
-    const mini = (String(reels.mascot).toUpperCase() === String(reels.narrative).toUpperCase()
-               && String(reels.mascot).toUpperCase() === String(reels.trend).toUpperCase());
-
-    // compute a multiplier
-    let tier = "NONE";
-    let mult = 0;
-    if(ultimate){ tier="ULTIMATE"; mult=50; }
-    else if(mega){ tier="MEGA"; mult=10; }
-    else if(mini){ tier="MINI"; mult=3; }
-
-    return {tier, mult, maxCount, counts};
-  }
-
-  // ----------------- generate pack -----------------
-  function generatePack(reels){
-    const theme=$("theme").value;
-    const chain=$("chain").value;
-    const spice=+$("spice").value;
-    const supply=$("supply").value.trim() || "1,000,000,000";
-
-    // seed from reels for consistency per spin
-    const seedStr = `${theme}|${chain}|${spice}|${supply}|${JSON.stringify(reels)}|${Date.now()}|${Math.random()}`;
-    const seed = parseInt(hash8(seedStr), 16) >>> 0;
-    const r = rand(seed);
-
-    const em = emojisByTheme[theme] || emojisByTheme.degen;
-    const e1 = pick(em, r), e2 = pick(em, r), e3 = pick(em, r);
-
-    const cf = chainFlavor(chain);
-
-    const vibe =
-      spice >= 88 ? "unhinged" :
-      spice >= 60 ? "degenerate" :
-      spice >= 35 ? "playful" : "soft";
-
-    const nameRaw = `${reels.prefix} ${reels.mascot} ${reels.suffix}`;
-    const name = titleCase(nameRaw.replace(/\s+/g," ").trim());
-
-    const ticker = makeTicker(name, reels.ticker);
-
-    // jackpot calc
-    const j = evalJackpot(reels);
-
-    const hookBase = [
-      `A ${reels.narrative.toLowerCase()} disguised as a token.`,
-      `The timeline’s new ${reels.narrative.toLowerCase()} machine.`,
-      `If you get it, you’re early.`,
-      `Born from attention. Raised by chaos.`
-    ];
-    const hookJack = [
-      `LEGENDARY MATCHES. The slot chose violence.`,
-      `JACKPOT ENERGY: ${reels.narrative} × ${reels.emotion}.`,
-      `This is the one your group chat won’t shut up about.`,
-      `A myth you can buy — and regret not buying.`
-    ];
-
-    const hook = (j.tier==="NONE") ? pick(hookBase,r) : pick(hookJack,r);
-
-    const lore = `${e1} ${hook} Born on ${cf} with ${vibe} energy. Supply: ${supply}. Visual: ${reels.visual}. Trend: ${reels.trend}. ${e3}`;
-
-    const logoPrompt = [
-      `Create a clean, iconic memecoin logo for "${name}" ($${ticker}).`,
-      `Style: ${reels.visual.toLowerCase()} + minimal flat vector, no text inside icon.`,
-      `Mood: ${reels.emotion.toLowerCase()}. Theme: ${theme}.`,
-      `Symbol: a simple ${reels.mascot.toLowerCase()} fused with a "${reels.narrative.toLowerCase()}" motif.`,
-      `Colors: neon purple + cyan on dark background${j.tier!=="NONE" ? " + gold jackpot accents" : ""}.`,
-      `Output: square 1024x1024, centered, bold silhouette, crisp edges.`
-    ].join(" ");
-
-    const cta = reels.cta; // already text like "DROP 🔥" etc.
-
-    const t1 = (j.tier==="NONE")
-      ? `${e1} ${name} ($${ticker}) just spun into existence.\nHook: ${hook}\n${cta}`
-      : `${e1} ${j.tier} JACKPOT HIT.\n${name} ($${ticker}) locked in.\nHook: ${hook}\n${cta}`;
-
-    const t2 = `${e2} Reels: ${Object.values(reels).join(" / ")}\nSupply: ${supply}\nVibe: ${spice}/100\nNo roadmap. Just momentum.`;
-
-    const t3 = (j.tier==="NONE")
-      ? `${e3} The meme is the utility.\nThe timeline is the market.\nIf you get it, you’re early.\n$${ticker}`
-      : `${e3} The meme is the utility.\nThe slot is the oracle.\nFade it and you’ll remember it.\n$${ticker}`;
-
-    const blockHeight = 2000000 + Math.floor(r()*9000000);
-    const blockHash = hash64(`${name}|${ticker}|${lore}|${Date.now()}|${j.tier}`);
-
-    return {
-      theme, chain, spice, supply,
-      reels, jackpot:j,
-      name, ticker, lore, logoPrompt,
-      tweets:[t1,t2,t3],
-      blockHeight, blockHash,
-      ts: new Date().toISOString()
-    };
-  }
-
-  // ----------------- history -----------------
-  function loadHistory(){
-    try{ return JSON.parse(localStorage.getItem(storeKey) || "[]"); } catch { return []; }
-  }
-  function saveHistory(items){
-    localStorage.setItem(storeKey, JSON.stringify(items.slice(0,25)));
-  }
-
-  // ----------------- confetti -----------------
-  function confettiBurst(isBig){
-    const wrap=$("confettiWrap");
-    wrap.innerHTML="";
-    wrap.classList.add("show");
-    const n=isBig ? 160 : 80;
-    const colors = isBig
-      ? ["#ffd166","#22d3ee","#7c4dff","#34d399","#ffffff"]
-      : ["#22d3ee","#7c4dff","#34d399","#ffffff"];
-
-    for(let i=0;i<n;i++){
-      const d=document.createElement("div");
-      d.className="confetti";
-      d.style.left = (Math.random()*100) + "vw";
-      d.style.animationDuration = (1.2 + Math.random()*1.2) + "s";
-      d.style.background = colors[Math.floor(Math.random()*colors.length)];
-      d.style.transform = `rotate(${Math.random()*180}deg)`;
-      d.style.width = (6 + Math.random()*8) + "px";
-      d.style.height = (10 + Math.random()*14) + "px";
-      wrap.appendChild(d);
-    }
-    setTimeout(()=>wrap.classList.remove("show"), isBig ? 2200 : 1700);
-  }
-
-  // ----------------- download card -----------------
-  function roundRect(ctx, x,y,w,h,r, fill, stroke){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-    ctx.fillStyle=fill; ctx.fill();
-    ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke();
-  }
-  function wrapDraw(ctx, text, x, y, maxWidth, lineHeight, maxLines){
-    const words = String(text).split(/\s+/).filter(Boolean);
-    let line="", lines=0;
-    for(const wd of words){
-      const test = line ? line+" "+wd : wd;
-      if(ctx.measureText(test).width <= maxWidth) line=test;
-      else{
-        ctx.fillText(line, x, y + lines*lineHeight);
-        lines++; line=wd;
-        if(lines>=maxLines-1) break;
-      }
-    }
-    if(lines<maxLines) ctx.fillText(line, x, y + lines*lineHeight);
-  }
-  function downloadCard(pack){
-    const c=$("renderCanvas");
-    const ctx=c.getContext("2d");
-    const W=c.width, H=c.height;
-
-    ctx.clearRect(0,0,W,H);
-
-    const g1 = ctx.createRadialGradient(W*0.2, H*0.2, 50, W*0.2, H*0.2, 700);
-    g1.addColorStop(0, pack.jackpot.tier==="NONE" ? "rgba(124,77,255,.35)" : "rgba(255,209,102,.35)");
-    g1.addColorStop(1, "rgba(7,8,18,1)");
-    ctx.fillStyle=g1; ctx.fillRect(0,0,W,H);
-
-    const g2 = ctx.createRadialGradient(W*0.85, H*0.25, 50, W*0.85, H*0.25, 700);
-    g2.addColorStop(0, "rgba(34,211,238,.25)");
-    g2.addColorStop(1, "rgba(7,8,18,0)");
-    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
-
-    roundRect(ctx, 40, 40, W-80, H-80, 28, "rgba(14,16,33,.80)",
-      pack.jackpot.tier==="NONE" ? "rgba(255,255,255,.10)" : "rgba(255,209,102,.22)");
-
-    ctx.fillStyle="rgba(238,240,255,.95)";
-    ctx.font="900 50px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText(pack.jackpot.tier==="NONE" ? "MEME SLOT — LAUNCH PACK" : `${pack.jackpot.tier} JACKPOT PACK`, 70, 120);
-
-    ctx.fillStyle=pack.jackpot.tier==="NONE" ? "rgba(167,176,255,.95)" : "rgba(255,209,102,.95)";
-    ctx.font="700 22px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas";
-    ctx.fillText(`LOCKED @ BLOCK ${pack.blockHeight.toLocaleString()}  •  ${pack.blockHash.slice(0,16)}…`, 70, 155);
-
-    ctx.fillStyle="rgba(238,240,255,.95)";
-    ctx.font="900 44px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText(`${pack.name}`, 70, 228);
-
-    ctx.fillStyle="rgba(34,211,238,.95)";
-    ctx.font="900 30px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas";
-    ctx.fillText(`$${pack.ticker}  •  SUPPLY ${pack.supply}  •  POT ${getPot().toLocaleString()}🪙`, 70, 268);
-
-    ctx.fillStyle="rgba(167,176,255,.95)";
-    ctx.font="700 18px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas";
-    ctx.fillText(`REELS: ${Object.values(pack.reels).join(" / ")}`, 70, 305);
-
-    ctx.fillStyle="rgba(238,240,255,.90)";
-    ctx.font="800 26px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText("LORE", 70, 352);
-
-    ctx.fillStyle="rgba(238,240,255,.84)";
-    ctx.font="500 22px system-ui, -apple-system, Segoe UI, Roboto";
-    wrapDraw(ctx, pack.lore, 70, 388, 1060, 30, 6);
-
-    ctx.fillStyle="rgba(238,240,255,.90)";
-    ctx.font="800 26px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText("TWEETS", 70, 548);
-
-    ctx.fillStyle="rgba(238,240,255,.82)";
-    ctx.font="500 20px system-ui, -apple-system, Segoe UI, Roboto";
-    const tweets = pack.tweets.map((t,i)=> `${i+1}) ${t.replace(/\n/g," ")}`).join("\n");
-    wrapDraw(ctx, tweets, 70, 582, 1060, 26, 4);
-
-    const url=c.toDataURL("image/png");
-    const a=document.createElement("a");
-    a.href=url;
-    a.download=`${pack.ticker}_${pack.jackpot.tier}_card.png`;
-    a.click();
-  }
-
-  // ----------------- copy -----------------
-  function copyText(txt){
-    navigator.clipboard?.writeText(txt).catch(()=>{
-      const ta=document.createElement("textarea");
-      ta.value=txt; document.body.appendChild(ta);
-      ta.select(); document.execCommand("copy"); ta.remove();
-    });
-  }
-
-  // ----------------- UI outputs -----------------
-  let current=null;
-
-  function setOutputs(pack, payoutText){
-    $("outName").textContent = pack.name;
-    $("outTicker").textContent = "$" + pack.ticker;
-    $("outLore").textContent = pack.lore;
-    $("outLogo").textContent = pack.logoPrompt;
-    $("outT1").textContent = pack.tweets[0];
-    $("outT2").textContent = pack.tweets[1];
-    $("outT3").textContent = pack.tweets[2];
-    $("outHash").textContent = pack.blockHash;
-    $("outReels").textContent = Object.values(pack.reels).join(" / ");
-    $("blockHeight").textContent = pack.blockHeight.toLocaleString();
-
-    const j = pack.jackpot;
-    const jp = (j.tier==="NONE")
-      ? "NONE"
-      : `${j.tier} • x${j.mult} • payout ${payoutText}🪙 (pot reset/adjusted)`;
-    $("outJackpot").textContent = jp;
-
-    const banner=$("banner");
-    banner.classList.toggle("show", j.tier!=="NONE");
-    banner.textContent = j.tier==="NONE" ? "" : `💥 ${j.tier} JACKPOT`;
-
-    const card=$("machineCard");
-    if(j.tier!=="NONE"){
-      card.style.boxShadow = "0 22px 60px rgba(0,0,0,.35), 0 0 30px rgba(255,209,102,.18)";
-      card.style.borderColor = "rgba(255,209,102,.22)";
-    }else{
-      card.style.boxShadow = "0 22px 60px rgba(0,0,0,.35)";
-      card.style.borderColor = "rgba(255,255,255,.10)";
-    }
-  }
-
-  // ----------------- history note (simple) -----------------
-  function setHistoryNote(){
-    const hist=loadHistory();
-    $("historyNote").textContent = hist.length
-      ? `History saved locally (browser). Spins stored: ${hist.length}.`
-      : `History saved locally (browser). No spins yet.`;
-  }
-
-  // ----------------- main spin flow -----------------
-  function doSpin(){
-    const spinBtn=$("spinBtn");
-    spinBtn.disabled=true;
-
-    // pot grows each spin
-    const spice=+$("spice").value;
-    const pBonus = jackpotChance(spice);
-    const growth = 120 + Math.floor(spice*6) + (Math.random()<pBonus ? 400 : 0);
-    setPot(getPot() + growth);
-    updatePotUI();
-
-    const reels = spinAllReels();
-
-    // wait until reels stop-ish
-    const settleMs = 0.85 + (reelsMeta.length-1)*0.08;
-    const wait = Math.floor(settleMs*1000) + 420;
-
-    setTimeout(()=>{
-      const pack=generatePack(reels);
-      current=pack;
-
-      // payout logic
-      const pot=getPot();
-      let payout=0;
-
-      if(pack.jackpot.tier!=="NONE"){
-        // payout is % of pot based on tier multiplier
-        const basePct = pack.jackpot.tier==="MINI" ? 0.15 : pack.jackpot.tier==="MEGA" ? 0.45 : 0.90;
-        payout = Math.max(250, Math.floor(pot * basePct));
-        // reset pot to remaining (keeps it fun)
-        setPot(Math.max(1000, pot - payout));
-        updatePotUI();
-
-        confettiBurst(pack.jackpot.tier!=="MINI"); // bigger confetti for mega/ultimate
-      }
-
-      // lock outputs
-      const payoutText = payout ? payout.toLocaleString() : "0";
-      setOutputs(pack, payoutText);
-
-      // save to history (just last 25)
-      const hist=loadHistory();
-      hist.unshift({
-        name: pack.name, ticker: pack.ticker,
-        lore: pack.lore, logoPrompt: pack.logoPrompt, tweets: pack.tweets,
-        jackpot: pack.jackpot, reels: pack.reels,
-        blockHeight: pack.blockHeight, blockHash: pack.blockHash,
-        theme: pack.theme, chain: pack.chain, spice: pack.spice, supply: pack.supply,
-        ts: pack.ts
-      });
-      saveHistory(hist);
-      setHistoryNote();
-
-      spinBtn.disabled=false;
-    }, wait);
-  }
-
-  // ----------------- confetti helper -----------------
-  function confettiBurst(isBig){
-    const wrap=$("confettiWrap");
-    wrap.innerHTML="";
-    wrap.classList.add("show");
-    const n=isBig ? 160 : 80;
-    const colors = isBig
-      ? ["#ffd166","#22d3ee","#7c4dff","#34d399","#ffffff"]
-      : ["#22d3ee","#7c4dff","#34d399","#ffffff"];
-    for(let i=0;i<n;i++){
-      const d=document.createElement("div");
-      d.className="confetti";
-      d.style.left = (Math.random()*100) + "vw";
-      d.style.animationDuration = (1.2 + Math.random()*1.2) + "s";
-      d.style.background = colors[Math.floor(Math.random()*colors.length)];
-      d.style.transform = `rotate(${Math.random()*180}deg)`;
-      d.style.width = (6 + Math.random()*8) + "px";
-      d.style.height = (10 + Math.random()*14) + "px";
-      wrap.appendChild(d);
-    }
-    setTimeout(()=>wrap.classList.remove("show"), isBig ? 2200 : 1700);
-  }
-
-  // ----------------- copy/download buttons -----------------
-  function buildAllText(pack){
-    return [
-      `COIN: ${pack.name}`,
-      `TICKER: $${pack.ticker}`,
-      `JACKPOT: ${pack.jackpot.tier} (x${pack.jackpot.mult})`,
-      `POT NOW: ${getPot().toLocaleString()}🪙`,
-      `SUPPLY: ${pack.supply}`,
-      `REELS: ${Object.values(pack.reels).join(" / ")}`,
-      ``,
-      `LORE:`,
-      pack.lore,
-      ``,
-      `LOGO PROMPT:`,
-      pack.logoPrompt,
-      ``,
-      `TWEETS:`,
-      `1) ${pack.tweets[0]}`,
-      `2) ${pack.tweets[1]}`,
-      `3) ${pack.tweets[2]}`,
-      ``,
-      `LOCK: blockHeight=${pack.blockHeight} hash=${pack.blockHash}`
-    ].join("\n");
-  }
-
-  document.addEventListener("click",(e)=>{
-    const c=e.target.closest("button.copy");
-    if(!c || !c.dataset.copy || !current) return;
-    const map={
-      name: current.name,
-      ticker: "$"+current.ticker,
-      lore: current.lore,
-      logo: current.logoPrompt,
-      t1: current.tweets[0],
-      t2: current.tweets[1],
-      t3: current.tweets[2],
-      hash: current.blockHash,
-      reels: Object.values(current.reels).join(" / "),
-      jackpot: current.jackpot.tier
-    };
-    copyText(map[c.dataset.copy] || "");
-    c.textContent="COPIED";
-    setTimeout(()=>c.textContent="COPY",700);
-  });
-
-  $("spinBtn").addEventListener("click", doSpin);
-
-  $("copyAllBtn").addEventListener("click", ()=>{
-    if(!current) return;
-    copyText(buildAllText(current));
-    $("copyAllBtn").textContent="COPIED ALL";
-    setTimeout(()=>$("copyAllBtn").textContent="COPY ALL",900);
-  });
-
-  $("downloadBtn").addEventListener("click", ()=>{
-    if(!current) return;
-    downloadCard(current);
-  });
-
-  $("resetPotBtn").addEventListener("click", ()=>{
-    setPot(1000);
-    updatePotUI();
-  });
-
-  $("clearBtn").addEventListener("click", ()=>{
-    localStorage.removeItem(storeKey);
-    current=null;
-    ["outName","outTicker","outJackpot","outLore","outLogo","outT1","outT2","outT3","outHash","outReels"].forEach(id=>$(id).textContent="—");
-    $("blockHeight").textContent="—";
-    $("banner").classList.remove("show");
-    setHistoryNote();
-  });
-
-  // init
-  initReels();
-  updatePotUI();
-  setHistoryNote();
-  $("spice").addEventListener("input", updatePotUI);
-</script>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>© Worm Colony</span>
+      <span class="dotSep">•</span>
+      <span class="hash" id="universeHash">Universe: —</span>
+    </footer>
+  </div>
+
+  <script src="script.js" defer></script>
 </body>
 </html>
